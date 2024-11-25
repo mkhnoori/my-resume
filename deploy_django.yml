@@ -85,7 +85,7 @@
     # 6. Set environment variables and systemd service for Gunicorn
     - name: Create a Gunicorn systemd service file
       copy:
-        dest: "/etc/systemd/system/myapp.service"
+        dest: "/etc/systemd/system/myapp.service"  # Make sure this is the correct path
         content: |
           [Unit]
           Description=Gunicorn instance to serve Django app
@@ -117,13 +117,13 @@
         enabled: yes
         state: started
       loop:
-        - "{{ app_dir }}.service"
+        - myapp.service  # Correctly reference the service by its name
         - nginx
 
   handlers:
     - name: Restart Gunicorn
       systemd:
-        name: "{{ app_dir }}.service"
+        name: myapp.service  # Correct reference to the Gunicorn service
         state: restarted
 
     - name: Restart Nginx
