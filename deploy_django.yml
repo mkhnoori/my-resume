@@ -40,7 +40,7 @@
     # 3. Clone Django app repository
     - name: Clone Django app repository
       git:
-        repo: 'https://github.com/mkhnoori/python-khalid-resume.git'
+        repo: 'https://github.com/mkhnoori/my-resume.git'
         dest: "{{ app_dir }}"
         version: "main"  # Replace with your branch name or tag if needed
 
