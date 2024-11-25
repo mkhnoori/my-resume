@@ -69,8 +69,8 @@ DATABASES = {
         'NAME': 'mydb',  # Replace with your DB name
         'USER': 'admin',  # Replace with your DB username
         'PASSWORD': 'khalid',  # Replace with your DB password
-        'HOST': 'db',  # This matches the db service name in your docker-compose.yml
-        'PORT': '5430',
+        'HOST': '127.0.0.1',  # This matches the db service name in your docker-compose.yml
+        'PORT': '3306',
     }
 }
 
