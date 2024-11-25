@@ -106,7 +106,7 @@
     - name: Create Nginx config for Django app
       template:
         src: nginx_django_template.conf.j2
-        dest: "/etc/nginx/sites-available/{{ app_dir }}"
+        dest: "/etc/nginx/sites-available/{{ app_dir | basename }}.conf"
       notify:
         - Restart Nginx
 
