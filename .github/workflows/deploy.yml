@@ -8,6 +8,7 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+
     steps:
       # Checkout code from the repository
       - name: Checkout code
@@ -39,13 +40,30 @@ jobs:
       # Add EC2 host to known hosts to avoid the "host verification" prompt
       - name: Add EC2 to known hosts
         run: |
-          mkdir -p ~/.ssh
-          ssh-keyscan -H ${{ secrets.EC2_IP }} >> ~/.ssh/known_hosts
-          chmod 644 ~/.ssh/known_hosts  # Ensure correct permissions
+          ssh-keyscan -H ${EC2_IP} >> ~/.ssh/known_hosts
 
       # Deploy the app to EC2
       - name: Deploy to EC2
         run: |
           ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no ubuntu@${{ secrets.EC2_IP }} << EOF
-            cd /home/ubuntu/my-resume && git pull origin main && source venv/bin/activate && pip install -r requirements.txt && python manage.py migrate && python manage.py collectstatic --noinput && sudo systemctl restart gunicorn && sudo systemctl restart nginx
+            # Change to project directory
+            cd /home/ubuntu/my-resume
+
+            # Reset any local changes and force sync with the main branch
+            git reset --hard HEAD  # Discard any local changes
+            git pull origin main  # Pull the latest changes from GitHub
+
+            # Activate the virtual environment
+            source venv/bin/activate
+
+            # Install dependencies
+            pip install -r requirements.txt
+
+            # Run Django migrations and collect static files
+            python manage.py migrate
+            python manage.py collectstatic --noinput
+
+            # Restart Gunicorn and Nginx to apply changes
+            sudo systemctl restart gunicorn
+            sudo systemctl restart nginx
           EOF
