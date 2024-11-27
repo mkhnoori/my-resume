@@ -14,7 +14,7 @@
     # 1. Update apt and install dependencies
     - name: Update apt cache
       apt:
-        update_cache: yes
+        update_cache: true
 
     - name: Install system dependencies
       apt:
