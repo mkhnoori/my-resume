@@ -73,18 +73,18 @@ jobs:
       # Deploy the app to EC2
       - name: Deploy to EC2
         run: |
-          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no ubuntu@${{ secrets.EC2_IP }} << EOF
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no ubuntu@${{ secrets.EC2_IP }} << 'EOF'
             # Pull latest code
             cd /home/ubuntu/my-resume && git pull origin main
             
             # Set up Nginx
-            sudo bash -c 'cat > /etc/nginx/sites-available/mkhnoori.net <<EOF_NGINX
+            sudo bash -c 'cat > /etc/nginx/sites-available/mkhnoori.net << EOF_NGINX
             server {
                 listen 80;
                 server_name mkhnoori.net www.mkhnoori.net;
                 
                 location / {
-                    proxy_pass http://127.0.0.1:8000;
+                    proxy_pass http://unix:/home/ubuntu/my-resume/myresume.sock:;
                     proxy_set_header Host \$host;
                     proxy_set_header X-Real-IP \$remote_addr;
                     proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
@@ -102,14 +102,34 @@ jobs:
             EOF_NGINX'
 
             sudo ln -s /etc/nginx/sites-available/mkhnoori.net /etc/nginx/sites-enabled/
-            sudo nginx -t
-            sudo systemctl reload nginx
-            
-            # Install Gunicorn if not already installed
-            source /home/ubuntu/my-resume/venv/bin/activate
-            pip install gunicorn
+            sudo nginx -t  # Test the Nginx configuration
+            sudo systemctl reload nginx  # Reload Nginx to apply the changes
 
-            # Restart services
+            # Set up Gunicorn to run as a systemd service
+            sudo bash -c 'cat > /etc/systemd/system/gunicorn.service << EOF_GUNICORN
+            [Unit]
+            Description=gunicorn daemon for Django project
+            After=network.target
+
+            [Service]
+            User=ubuntu
+            Group=ubuntu
+            WorkingDirectory=/home/ubuntu/my-resume
+            ExecStart=/home/ubuntu/my-resume/venv/bin/gunicorn --workers 3 --bind unix:/home/ubuntu/my-resume/myresume.sock myresume.wsgi:application
+
+            # Restart the service if it crashes
+            Restart=always
+
+            [Install]
+            WantedBy=multi-user.target
+            EOF_GUNICORN'
+
+            # Reload systemd and enable Gunicorn to start on boot
+            sudo systemctl daemon-reload
+            sudo systemctl enable gunicorn
+            sudo systemctl start gunicorn
+
+            # Restart Nginx and Gunicorn services to ensure everything is running smoothly
             sudo systemctl restart gunicorn
             sudo systemctl restart nginx
           EOF
