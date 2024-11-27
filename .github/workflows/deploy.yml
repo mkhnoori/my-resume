@@ -47,5 +47,35 @@ jobs:
       - name: Deploy to EC2
         run: |
           ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no ubuntu@${{ secrets.EC2_IP }} << EOF
-            cd /home/ubuntu/my-resume && git pull origin main && source venv/bin/activate && pip install -r requirements.txt && python manage.py migrate && python manage.py collectstatic --noinput && sudo systemctl restart gunicorn && sudo systemctl restart nginx
+            # Check if the directory exists, if not, clone the repo
+            if [ ! -d "/home/ubuntu/my-resume" ]; then
+              git clone https://github.com/${{ github.repository }} /home/ubuntu/my-resume
+            fi
+
+            # Go to the project directory
+            cd /home/ubuntu/my-resume
+
+            # Pull the latest changes from the main branch
+            git fetch --all
+            git reset --hard origin/main
+
+            # Set up the virtual environment (assuming it doesn't exist)
+            if [ ! -d "venv" ]; then
+              python3 -m venv venv
+            fi
+
+            source venv/bin/activate
+
+            # Install requirements
+            pip install -r requirements.txt
+
+            # Apply database migrations
+            python manage.py migrate
+
+            # Collect static files
+            python manage.py collectstatic --noinput
+
+            # Restart Gunicorn and Nginx
+            sudo systemctl restart gunicorn
+            sudo systemctl restart nginx
           EOF
