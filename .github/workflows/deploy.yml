@@ -39,11 +39,13 @@ jobs:
       # Add EC2 host to known hosts to avoid the "host verification" prompt
       - name: Add EC2 to known hosts
         run: |
-          ssh-keyscan -H ${EC2_IP} >> ~/.ssh/known_hosts
+          mkdir -p ~/.ssh
+          ssh-keyscan -H ${{ secrets.EC2_IP }} >> ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts  # Ensure correct permissions
 
       # Deploy the app to EC2
       - name: Deploy to EC2
         run: |
           ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no ubuntu@${{ secrets.EC2_IP }} << EOF
-            cd /home/ubuntu/your-project && git pull origin main && source venv/bin/activate && pip install -r requirements.txt && python manage.py migrate && python manage.py collectstatic --noinput && sudo systemctl restart gunicorn && sudo systemctl restart nginx
+            cd /home/ubuntu/my-resume && git pull origin main && source venv/bin/activate && pip install -r requirements.txt && python manage.py migrate && python manage.py collectstatic --noinput && sudo systemctl restart gunicorn && sudo systemctl restart nginx
           EOF
