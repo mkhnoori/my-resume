@@ -82,9 +82,9 @@ jobs:
             server {
                 listen 80;
                 server_name mkhnoori.net www.mkhnoori.net;
-                
+
                 location / {
-                    proxy_pass http://unix:/home/ubuntu/my-resume/resume.sock;
+                    proxy_pass http://unix:/home/ubuntu/my-resume/myresume.sock;
                     proxy_set_header Host \$host;
                     proxy_set_header X-Real-IP \$remote_addr;
                     proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
@@ -115,7 +115,7 @@ jobs:
             User=ubuntu
             Group=ubuntu
             WorkingDirectory=/home/ubuntu/my-resume
-            ExecStart=/home/ubuntu/my-resume/venv/bin/gunicorn --workers 3 --bind unix:/home/ubuntu/my-resume/resume.sock myresume.wsgi:application
+            ExecStart=/home/ubuntu/my-resume/venv/bin/gunicorn --workers 3 --bind unix:/home/ubuntu/my-resume/myresume.sock resume.wsgi:application
 
             # Restart the service if it crashes
             Restart=always
@@ -129,22 +129,4 @@ jobs:
             sudo systemctl enable gunicorn
             sudo systemctl start gunicorn
 
-            # Restart Nginx and Gunicorn services to ensure everything is running smoothly
-            sudo systemctl restart gunicorn
-            sudo systemctl restart nginx
-          EOF
-
-      # Set up SSL with Let's Encrypt (using Certbot)
-      - name: Setup SSL with Certbot
-        run: |
-          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no ubuntu@${{ secrets.EC2_IP }} << EOF
-            sudo apt-get update
-            sudo apt-get install -y certbot python3-certbot-nginx
-
-            # Obtain SSL certificate for the domain
-            sudo certbot --nginx -d mkhnoori.net -d www.mkhnoori.net
-
-            # Set up automatic certificate renewal
-            sudo systemctl enable certbot.timer
-            sudo systemctl start certbot.timer
-          EOF
+            
