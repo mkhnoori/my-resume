@@ -50,11 +50,11 @@ jobs:
             # Pull latest code
             cd /home/ubuntu/my-resume && git pull origin main
 
-            # Step 1: Create the Nginx configuration file
-            echo "
+            # Set up Nginx configuration
+            sudo bash -c 'cat > /etc/nginx/sites-available/resume.mkhnoori.dev << EOF_NGINX
             server {
                 listen 80;
-                server_name resume.mkhnoori.dev www.resume.mkhnoori.dev;
+                server_name resume.mkhnoori.dev;
 
                 location / {
                     proxy_pass http://unix:/home/ubuntu/my-resume/myresume.sock;
@@ -68,20 +68,18 @@ jobs:
                     alias /home/ubuntu/my-resume/staticfiles/;
                 }
             }
-            " | sudo tee /etc/nginx/sites-available/resume.mkhnoori.dev > /dev/null
+            EOF_NGINX'
 
-            # Step 2: Remove old symlink, if any, and create a new one
+            # Remove existing symlink if it exists, then create a new one
             sudo rm -f /etc/nginx/sites-enabled/resume.mkhnoori.dev
             sudo ln -s /etc/nginx/sites-available/resume.mkhnoori.dev /etc/nginx/sites-enabled/
 
-            # Step 3: Test Nginx configuration for syntax errors
-            sudo nginx -t
+            # Test and reload Nginx configuration
+            sudo nginx -t  # Test the Nginx configuration
+            sudo systemctl reload nginx  # Reload Nginx to apply the changes
 
-            # Step 4: Reload Nginx to apply changes
-            sudo systemctl reload nginx
-
-            # Step 5: Set up Gunicorn to run as a systemd service
-            sudo bash -c 'cat > /etc/systemd/system/gunicorn.service << "EOF_GUNICORN"
+            # Set up Gunicorn to run as a systemd service
+            sudo bash -c 'cat > /etc/systemd/system/gunicorn.service << EOF_GUNICORN
             [Unit]
             Description=gunicorn daemon for Django project
             After=network.target
@@ -99,7 +97,7 @@ jobs:
             WantedBy=multi-user.target
             EOF_GUNICORN'
 
-            # Step 6: Reload systemd and enable Gunicorn to start on boot
+            # Reload systemd and enable Gunicorn to start on boot
             sudo systemctl daemon-reload
             sudo systemctl enable gunicorn
             sudo systemctl start gunicorn
