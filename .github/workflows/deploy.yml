@@ -46,13 +46,12 @@ jobs:
       # Deploy the app to EC2
       - name: Deploy to EC2
         run: |
-          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no ubuntu@${{ secrets.EC2_IP }} << EOF
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no ubuntu@${{ secrets.EC2_IP }} << 'EOF'
             # Pull latest code
             cd /home/ubuntu/my-resume && git pull origin main
 
-            # Set up Nginx configuration
-            sudo bash -c 'cat > /etc/nginx/sites-available/resume.mkhnoori.dev << EOF_NGINX
-            server {
+            # Write Nginx configuration to the file
+            echo 'server {
                 listen 80;
                 server_name resume.mkhnoori.dev;
 
@@ -67,8 +66,7 @@ jobs:
                 location /static/ {
                     alias /home/ubuntu/my-resume/staticfiles/;
                 }
-            }
-            EOF_NGINX'
+            }' | sudo tee /etc/nginx/sites-available/resume.mkhnoori.dev > /dev/null
 
             # Remove existing symlink if it exists, then create a new one
             sudo rm -f /etc/nginx/sites-enabled/resume.mkhnoori.dev
@@ -79,8 +77,7 @@ jobs:
             sudo systemctl reload nginx  # Reload Nginx to apply the changes
 
             # Set up Gunicorn to run as a systemd service
-            sudo bash -c 'cat > /etc/systemd/system/gunicorn.service << EOF_GUNICORN
-            [Unit]
+            echo '[Unit]
             Description=gunicorn daemon for Django project
             After=network.target
 
@@ -94,8 +91,7 @@ jobs:
             Restart=always
 
             [Install]
-            WantedBy=multi-user.target
-            EOF_GUNICORN'
+            WantedBy=multi-user.target' | sudo tee /etc/systemd/system/gunicorn.service > /dev/null
 
             # Reload systemd and enable Gunicorn to start on boot
             sudo systemctl daemon-reload
