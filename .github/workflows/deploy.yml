@@ -46,7 +46,7 @@ jobs:
       # Deploy the app to EC2
       - name: Deploy to EC2
         run: |
-          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no ubuntu@${{ secrets.EC2_IP }} << 'EOF'
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no ubuntu@${{ secrets.EC2_IP }} << EOF
             # Pull latest code
             cd /home/ubuntu/my-resume && git pull origin main
 
