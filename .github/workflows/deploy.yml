@@ -50,11 +50,7 @@ jobs:
             # Pull latest code
             cd /home/ubuntu/my-resume && git pull origin main
 
-            # Collect static files
-            source /home/ubuntu/my-resume/venv/bin/activate
-            python /home/ubuntu/my-resume/manage.py collectstatic --noinput
-
-            # Set up Nginx configuration for resume.mkhnoori.dev
+            # Set up Nginx configuration
             sudo bash -c 'cat > /etc/nginx/sites-available/resume.mkhnoori.dev << "EOF_NGINX"
             server {
                 listen 80;
@@ -72,7 +68,7 @@ jobs:
                     alias /home/ubuntu/my-resume/staticfiles/;
                 }
             }
-          
+            EOF_NGINX'
 
             # Remove existing symlink if it exists, then create a new one
             sudo rm -f /etc/nginx/sites-enabled/resume.mkhnoori.dev
