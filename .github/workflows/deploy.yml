@@ -54,7 +54,7 @@ jobs:
             sudo bash -c 'cat > /etc/nginx/sites-available/resume.mkhnoori.dev << "EOF_NGINX"
             server {
                 listen 80;
-                server_name resume.mkhnoori.dev www.resume.mkhnoori.dev;
+                server_name resume.mkhnoori.dev;
 
                 location / {
                     proxy_pass http://unix:/home/ubuntu/my-resume/myresume.sock;
