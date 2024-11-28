@@ -72,7 +72,7 @@ jobs:
                     alias /home/ubuntu/my-resume/staticfiles/;
                 }
             }
-            EOF_NGINX'
+          
 
             # Remove existing symlink if it exists, then create a new one
             sudo rm -f /etc/nginx/sites-enabled/resume.mkhnoori.dev
