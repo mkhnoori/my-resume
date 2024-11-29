@@ -50,8 +50,11 @@ jobs:
             # Pull latest code
             cd /home/ubuntu/my-resume && git pull origin main
 
+            # Collect static files (important for CSS, JS, and templates)
+            source /home/ubuntu/my-resume/venv/bin/activate  # Activate virtualenv
+            python manage.py collectstatic --noinput  # Collect static files
+
             # Write Nginx configuration to the file
-            
             echo 'server {
                 listen 80;
                 server_name resume.mkhnoori.dev;
@@ -64,7 +67,6 @@ jobs:
 
                 ssl_certificate /etc/letsencrypt/live/resume.mkhnoori.dev/fullchain.pem;
                 ssl_certificate_key /etc/letsencrypt/live/resume.mkhnoori.dev/privkey.pem;
-
 
                 location / {
                     proxy_pass http://unix:/home/ubuntu/my-resume/myresume.sock;
@@ -107,5 +109,5 @@ jobs:
             # Reload systemd and enable Gunicorn to start on boot
             sudo systemctl daemon-reload
             sudo systemctl enable gunicorn
-            sudo systemctl start gunicorn
+            sudo systemctl restart gunicorn  # Restart Gunicorn to pick up any code changes
           EOF
