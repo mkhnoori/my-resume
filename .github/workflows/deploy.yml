@@ -51,6 +51,7 @@ jobs:
             cd /home/ubuntu/my-resume && git pull origin main
 
             # Write Nginx configuration to the file
+            
             echo 'server {
                 listen 80;
                 server_name resume.mkhnoori.dev;
