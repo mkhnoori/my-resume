@@ -55,6 +55,16 @@ jobs:
             echo 'server {
                 listen 80;
                 server_name resume.mkhnoori.dev;
+                # Redirect HTTP to HTTPS
+                return 301 https://$host$request_uri;
+            }
+            server {
+                listen 443 ssl;
+                server_name resume.mkhnoori.dev;
+
+                ssl_certificate /etc/letsencrypt/live/resume.mkhnoori.dev/fullchain.pem;
+                ssl_certificate_key /etc/letsencrypt/live/resume.mkhnoori.dev/privkey.pem;
+
 
                 location / {
                     proxy_pass http://unix:/home/ubuntu/my-resume/myresume.sock;
