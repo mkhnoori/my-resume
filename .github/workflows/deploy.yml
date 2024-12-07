@@ -43,48 +43,33 @@ jobs:
           echo "Adding EC2 IP to known_hosts"
           ssh-keyscan -H ${{ secrets.EC2_IP }} >> ~/.ssh/known_hosts
 
-      # Update DNS Record in Route 53 (Assuming you're using AWS CLI)
-      - name: Update Route 53 DNS Record
-        run: |
-          aws route53 change-resource-record-sets \
-            --hosted-zone-id ${{ secrets.ROUTE53_HOSTED_ZONE_ID }} \
-            --change-batch '{
-              "Changes": [
-                {
-                  "Action": "UPSERT",
-                  "ResourceRecordSet": {
-                    "Name": "mkhnoori.net.",
-                    "Type": "A",
-                    "TTL": 300,
-                    "ResourceRecords": [
-                      {
-                        "Value": "${{ secrets.EC2_IP }}"
-                      }
-                    ]
-                  }
-                }
-              ]
-            }'
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_DEFAULT_REGION: "us-east-1"
-
       # Deploy the app to EC2
       - name: Deploy to EC2
         run: |
           ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no ubuntu@${{ secrets.EC2_IP }} << EOF
             # Pull latest code
             cd /home/ubuntu/my-resume && git pull origin main
-            
-            # Set up Nginx
-            sudo bash -c 'cat > /etc/nginx/sites-available/mkhnoori.net <<EOF_NGINX
-            server {
+
+            # Collect static files (important for CSS, JS, and templates)
+            source /home/ubuntu/my-resume/venv/bin/activate  # Activate virtualenv
+            python manage.py collectstatic --noinput  # Collect static files
+
+            # Write Nginx configuration to the file
+            echo 'server {
                 listen 80;
-                server_name mkhnoori.net www.mkhnoori.net;
-                
+                server_name resume.mkhnoori.dev;
+                # Redirect HTTP to HTTPS
+                return 301 https://$host$request_uri;
+            }
+            server {
+                listen 443 ssl;
+                server_name resume.mkhnoori.dev;
+
+                ssl_certificate /etc/letsencrypt/live/resume.mkhnoori.dev/fullchain.pem;
+                ssl_certificate_key /etc/letsencrypt/live/resume.mkhnoori.dev/privkey.pem;
+
                 location / {
-                    proxy_pass http://127.0.0.1:8000;
+                    proxy_pass http://unix:/home/ubuntu/my-resume/myresume.sock;
                     proxy_set_header Host \$host;
                     proxy_set_header X-Real-IP \$remote_addr;
                     proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
@@ -92,39 +77,37 @@ jobs:
                 }
 
                 location /static/ {
-                    alias /home/ubuntu/my-resume/static/;
+                    alias /home/ubuntu/my-resume/staticfiles/;
                 }
+            }' | sudo tee /etc/nginx/sites-available/resume.mkhnoori.dev > /dev/null
 
-                location /media/ {
-                    alias /home/ubuntu/my-resume/media/;
-                }
-            }
-            EOF_NGINX'
+            # Remove existing symlink if it exists, then create a new one
+            sudo rm -f /etc/nginx/sites-enabled/resume.mkhnoori.dev
+            sudo ln -s /etc/nginx/sites-available/resume.mkhnoori.dev /etc/nginx/sites-enabled/
 
-            sudo ln -s /etc/nginx/sites-available/mkhnoori.net /etc/nginx/sites-enabled/
-            sudo nginx -t
-            sudo systemctl reload nginx
-            
-            # Install Gunicorn if not already installed
-            source /home/ubuntu/my-resume/venv/bin/activate
-            pip install gunicorn
+            # Test and reload Nginx configuration
+            sudo nginx -t  # Test the Nginx configuration
+            sudo systemctl reload nginx  # Reload Nginx to apply the changes
 
-            # Restart services
-            sudo systemctl restart gunicorn
-            sudo systemctl restart nginx
-          EOF
+            # Set up Gunicorn to run as a systemd service
+            echo '[Unit]
+            Description=gunicorn daemon for Django project
+            After=network.target
 
-      # Set up SSL with Let's Encrypt (using Certbot)
-      - name: Setup SSL with Certbot
-        run: |
-          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no ubuntu@${{ secrets.EC2_IP }} << EOF
-            sudo apt-get update
-            sudo apt-get install -y certbot python3-certbot-nginx
+            [Service]
+            User=ubuntu
+            Group=ubuntu
+            WorkingDirectory=/home/ubuntu/my-resume
+            ExecStart=/home/ubuntu/my-resume/venv/bin/gunicorn --workers 3 --bind unix:/home/ubuntu/my-resume/myresume.sock resume.wsgi:application
 
-            # Obtain SSL certificate for the domain
-            sudo certbot --nginx -d mkhnoori.net -d www.mkhnoori.net
+            # Restart the service if it crashes
+            Restart=always
 
-            # Set up automatic certificate renewal
-            sudo systemctl enable certbot.timer
-            sudo systemctl start certbot.timer
+            [Install]
+            WantedBy=multi-user.target' | sudo tee /etc/systemd/system/gunicorn.service > /dev/null
+
+            # Reload systemd and enable Gunicorn to start on boot
+            sudo systemctl daemon-reload
+            sudo systemctl enable gunicorn
+            sudo systemctl restart gunicorn  # Restart Gunicorn to pick up any code changes
           EOF
