@@ -10970,3 +10970,10 @@ section.resume-section .resume-section-content {
     padding-bottom: 5rem;
   }
 }
+.dev-icons i, .dev-icons img {
+  transition: transform 0.3s ease;
+}
+
+.dev-icons i:hover, .dev-icons img:hover {
+  transform: scale(1.2);
+}
